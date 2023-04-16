@@ -1,0 +1,13 @@
+.idea/
+__pycache__/
+/venv/
+/migrations/
+
+/.dmypy.json
+/.mypy_cache
+
+/src/api/endpoint/auth_pku.py
+
+/data/
+
+/scripts/probid_mapping.json
