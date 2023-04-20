@@ -432,8 +432,8 @@ class UserProfileView(ViewBase):
 
     def after_model_touched(self, model: store.UserProfileStore) -> None:
         self.emit_event(glitter.EventType.UPDATE_USER, model.user_id)
-
 def _user_oauth_info_formatter(_view: Any, _context: Any, model: store.UserStore, _name: str) -> str:
+
     return model.format_login_properties()
 
 def _user_game_status_formatter(_view: Any, _context: Any, model: store.UserStore, _name: str) -> str:

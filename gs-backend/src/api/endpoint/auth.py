@@ -4,11 +4,19 @@ import httpx
 from sanic import Blueprint, Request, HTTPResponse, response
 from sanic_ext import validate
 from typing import Optional
+from sqlalchemy import select
+import re
+import string
+from flask import jsonify, make_response
+import random as rd
+import time
 
-from ..auth import auth_response, AuthResponse, AuthError, oauth2_redirect, oauth2_check_state
+from ...store import UserPasswordStore, async_session_maker, MailVerifyCodeStore
+from ..auth import auth_response, AuthResponse, AuthError, oauth2_redirect, oauth2_check_state, json_response
 from ...state import User
 from ...logic import Worker
 from ... import secret
+from ...mail import send_verify_code
 
 try:
     from .auth_pku import iaaa_login, iaaa_check
@@ -61,6 +69,67 @@ async def auth_su(_req: Request, query: AuthSuParam, worker: Worker, user: Optio
         raise AuthError('不能切换到管理员账号')
 
     return su_user
+
+# 抱歉了, 新增了屎山代码
+MAIL_PATTERN=re.compile(re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'))
+
+@bp.route('/normal/send_mail', methods=['POST'])
+@json_response
+async def normal_send_mail(req: Request):
+    mail = req.json.get("mail", "")
+    print(mail)
+    if not re.match(MAIL_PATTERN, mail):
+        return {'status': 1, 'message': '邮箱格式不正确, 必须为东华大学邮箱'}
+    verify_code = ''.join(rd.choices(string.digits, k=6))
+    async with async_session_maker() as sess:
+        sess.add(MailVerifyCodeStore(mail=mail, verify_code=verify_code))
+        if await send_verify_code(verify_code, mail):
+            await sess.commit()
+            return {'status': 0, 'message': '发送成功'}
+        else:
+            return {'status': 1, 'message': '发送失败, 请检查邮箱是否正确或与管理员联系'}
+
+@bp.route('/normal/register', methods=['POST'])
+@json_response
+async def normal_register(req: Request):
+    mail = req.json.get("mail", "")
+    verify_code = req.json.get("verify_code", "")
+    password = req.json.get('password', "")
+
+    async with async_session_maker() as sess:
+        mail_record = await sess.scalar(
+            select(MailVerifyCodeStore).filter_by(mail=mail, verify_code=verify_code))
+        if mail_record is None or mail_record.timestamp + 86400 < time.time():
+            return {'status': 1, 'message': '验证码错误'}
+        
+        up: Optional[UserPasswordStore] = await sess.scalar(
+            select(UserPasswordStore).filter_by(uname=mail))
+        if up is None:
+            sess.add(UserPasswordStore(uname=mail, passw=password))
+            await sess.commit()
+            return {'status': 0, 'message': '注册成功'}
+        else:
+            return {'status': 1, 'message': '邮箱已被注册'}
+
+@bp.route('/normal/login', methods=['POST'])
+@auth_response
+async def auth_normal_res(req: Request, http_client: httpx.AsyncClient, worker: Worker) -> AuthResponse:
+    mail = req.json.get('mail', None)
+    password = req.json.get('password', None)
+    if not (mail and password):
+        raise AuthError('用户名或密码为空')
+    
+    async with async_session_maker() as sess:
+        up: Optional[UserPasswordStore] = await sess.scalar(
+            select(UserPasswordStore).filter_by(uname=mail))
+        if up is None or up.passw != password:
+            raise AuthError('用户名或密码错误, 也可能是今天你左脚先进的门')
+            
+        return f'normal:{mail}', {
+            'type': 'normal',
+            'info': {},
+            'access_token': ""
+        }, 'other'
 
 @bp.route('/github/login')
 async def auth_github_req(req: Request) -> HTTPResponse:

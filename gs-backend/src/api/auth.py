@@ -1,6 +1,8 @@
 import httpx
 from sanic import response, Request, HTTPResponse
 from sanic.models.handler_types import RouteHandler
+from flask import Response
+import json
 from html import escape
 from functools import wraps
 from inspect import isawaitable
@@ -93,6 +95,16 @@ def auth_response(fn: AuthHandler) -> RouteHandler:
                 '<br>'
                 f'<p><a href="{secret.FRONTEND_PORTAL_URL}">返回比赛平台</a></p>'
             )
+
+    return wrapped
+
+def json_response(fn) -> RouteHandler:
+    from .app import app
+    @wraps(fn)
+    async def wrapped(req: Request, *args: Any, **kwargs: Any) -> HTTPResponse:
+        ans = await fn(req, *args, **kwargs)
+        return HTTPResponse(json.dumps(ans, ensure_ascii=False), content_type='application/json')
+        # return Response(json.dumps(ans), content_type='application/json')
 
     return wrapped
 

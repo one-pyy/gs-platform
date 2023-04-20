@@ -14,4 +14,6 @@ RUN apt update && apt install -y nginx
 
 # COPY ./gs-backend/ /gs-backend/
 # & python3 run_reducer_admin.py & python3 run_worker_api.py 
-CMD service nginx restart && sleep 5 && (python3 run_worker_api.py & python3 run_reducer_admin.py)
+
+CMD tail -f /dev/null
+# CMD service nginx restart && sleep 5 && (python3 run_worker_api.py & python3 run_reducer_admin.py)

@@ -9,6 +9,12 @@ if TYPE_CHECKING:
     from . import UserProfileStore
 from . import Table
 
+class UserPasswordStore(Table):
+    __tablename__ = 'user_pass'
+    
+    uname: str = Column(String(128), nullable=False, unique=True)
+    passw: str = Column(String(128), nullable=False)
+
 class UserStore(Table):
     __tablename__ = 'user'
 

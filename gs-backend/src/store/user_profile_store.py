@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from . import UserStore
 from . import Table
 
+
 class UserProfileStore(Table):
     __tablename__ = 'user_profile'
 
@@ -29,6 +30,9 @@ class UserProfileStore(Table):
 
     email_or_null = Column('email', String(MAX_INFO_LEN), nullable=True)
     VAL_EMAIL = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+    
+    stu_num_or_null = Column('stu_num', String(MAX_INFO_LEN), nullable=True)
+    VAL_STU_NUM = re.compile(r'^\d{5,10}$')
 
     gender_or_null = Column('gender', String(MAX_INFO_LEN), nullable=True)
     VAL_GENDER = re.compile(r'^(female|male|other)$')
@@ -39,8 +43,8 @@ class UserProfileStore(Table):
     PROFILE_FOR_GROUP = {
         'staff': ['nickname', 'gender', 'tel', 'qq', 'comment'],
         'pku': ['nickname', 'gender', 'tel', 'qq', 'comment'],
-        'other': ['nickname', 'qq', 'comment'],
-        'banned': ['nickname', 'qq', 'comment'],
+        'other': ['nickname', 'qq', 'stu_num', 'comment'],
+        'banned': ['nickname', 'qq', 'stu_num', 'comment'],
     }
 
     def check_profile(self, group: str) -> Optional[str]:
@@ -58,6 +62,8 @@ class UserProfileStore(Table):
             return '电话号码格式错误'
         if 'email' in required_profiles and not self.VAL_EMAIL.match(self.email_or_null or ''):
             return '邮箱格式错误'
+        if 'stu_num' in required_profiles and not self.VAL_STU_NUM.match(self.stu_num_or_null or ''):
+            return '学号格式错误'
         if 'gender' in required_profiles and not self.VAL_GENDER.match(self.gender_or_null or ''):
             return '选择的性别无效'
         if 'comment' in required_profiles and not self.VAL_COMMENT.match(self.comment_or_null or ''):
